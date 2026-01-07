@@ -8,7 +8,17 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const version: std.SemanticVersion = .{
+        .major = 33,
+        .minor = 1,
+        .patch = 0,
+    };
+
     const test_step = b.step("test", "Run library tests");
+
+    const compile_flags = .{
+        "-std=c++17",
+    };
 
     const default_linkage = b.option(LinkMode, "linkage", "default linkage for all targets") orelse .static;
     const utf8_range_linkage = b.option(LinkMode, "utf8_range-linkage", "linkage for utf8_range") orelse default_linkage;
@@ -87,7 +97,7 @@ pub fn build(b: *std.Build) void {
 
     const libprotobuf = blk: {
         const lib = b.addLibrary(.{
-            .name = "libprotobuf",
+            .name = "protobuf",
             .root_module = b.createModule(.{
                 .target = target,
                 .optimize = optimize,
@@ -95,6 +105,7 @@ pub fn build(b: *std.Build) void {
                 .link_libcpp = true,
             }),
             .linkage = libprotobuf_linkage,
+            .version = version,
         });
         lib.linkLibrary(abseil_dep.artifact("abseil"));
         lib.linkLibrary(utf8_range);
@@ -109,6 +120,7 @@ pub fn build(b: *std.Build) void {
         lib.addCSourceFiles(.{
             .root = upstream.path(""),
             .files = libprotobuf_srcs,
+            .flags = &compile_flags,
             .language = .cpp,
         });
         b.installArtifact(lib);
@@ -117,7 +129,7 @@ pub fn build(b: *std.Build) void {
 
     const libprotoc = blk: {
         const lib = b.addLibrary(.{
-            .name = "libprotoc",
+            .name = "protoc",
             .root_module = b.createModule(.{
                 .target = target,
                 .optimize = optimize,
@@ -125,6 +137,7 @@ pub fn build(b: *std.Build) void {
                 .link_libcpp = true,
             }),
             .linkage = libprotoc_linkage,
+            .version = version,
         });
         lib.linkLibrary(libprotobuf);
         lib.linkLibrary(utf8_range);
@@ -135,6 +148,7 @@ pub fn build(b: *std.Build) void {
         lib.addCSourceFiles(.{
             .root = upstream.path(""),
             .files = libprotoc_srcs,
+            .flags = &compile_flags,
             .language = .cpp,
         });
         b.installArtifact(lib);
@@ -151,6 +165,7 @@ pub fn build(b: *std.Build) void {
                 .link_libcpp = true,
             }),
             .linkage = protoc_linkage,
+            .version = version,
         });
         exe.pie = true;
         exe.linkLibrary(libprotoc);
