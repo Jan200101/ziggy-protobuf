@@ -92,6 +92,7 @@ fn test_abseil(b: *std.Build, options: anytype) !void {
 
 const asbeil_sources: []const []const u8 = &.{
     "base/log_severity.cc",
+    "base/throw_delegate.cc",
     "base/internal/cycleclock.cc",
     "base/internal/spinlock.cc",
     "base/internal/spinlock_wait.cc",
@@ -100,7 +101,6 @@ const asbeil_sources: []const []const u8 = &.{
     "base/internal/unscaledcycleclock.cc",
     "base/internal/raw_logging.cc",
     "base/internal/low_level_alloc.cc",
-    "base/internal/throw_delegate.cc",
     "base/internal/strerror.cc",
 
     "strings/cord.cc",

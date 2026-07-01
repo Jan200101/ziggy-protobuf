@@ -4,7 +4,7 @@
     .fingerprint = 0x99fac5bef9175f04,
     .dependencies = .{
         .protobuf = .{
-            .url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protobuf-35.1.zip",
+            .url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protobuf-35.1.tar.gz",
             .hash = "N-V-__8AAKESzQLTflk_8mGwLlk9VhY62vntiaDf9ZwZwX6U",
         },
         .abseil = .{ .path = "pkg/abseil" },
