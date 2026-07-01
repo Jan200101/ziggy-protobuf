@@ -1,34 +1,37 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
     const upstream = b.dependency("abseil-cpp", .{});
 
-    const abseil = b.addLibrary(.{
-        .name = "abseil",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .link_libcpp = true,
-        }),
-        .linkage = .static,
+    const abseil_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .link_libcpp = true,
     });
 
     if (target.result.os.tag == .windows) {
-        abseil.linkSystemLibrary("dbghelp");
+        abseil_mod.linkSystemLibrary("dbghelp", .{});
     } else if (target.result.os.tag == .macos) {
-        abseil.linkFramework("CoreFoundation");
+        abseil_mod.linkFramework("CoreFoundation", .{});
     }
 
-    abseil.addIncludePath(upstream.path(""));
-    abseil.addCSourceFiles(.{
+    abseil_mod.addIncludePath(upstream.path(""));
+    abseil_mod.addCSourceFiles(.{
         .root = upstream.path("absl"),
         .files = asbeil_sources,
         .language = .cpp,
     });
+
+    const abseil = b.addLibrary(.{
+        .name = "abseil",
+        .root_module = abseil_mod,
+        .linkage = .static,
+    });
+
     abseil.installHeadersDirectory(
         upstream.path("absl"),
         "absl",
@@ -36,6 +39,55 @@ pub fn build(b: *std.Build) void {
     );
 
     b.installArtifact(abseil);
+
+    const test_step = b.step("test", "Run library tests");
+
+    try test_abseil(b, .{
+        .target = target,
+        .optimize = optimize,
+
+        .upstream = upstream,
+        .abseil = abseil,
+
+        .test_step = test_step,
+    });
+}
+
+fn test_abseil(b: *std.Build, options: anytype) !void {
+    const abseil = options.abseil;
+
+    for (asbeil_tests) |test_path| {
+        const test_mod = b.createModule(.{
+            .target = options.target,
+            .optimize = options.optimize,
+            .link_libc = true,
+            .link_libcpp = true,
+        });
+
+        test_mod.linkLibrary(abseil);
+
+        test_mod.addCSourceFiles(.{
+            .root = options.upstream.path("absl"),
+            .files = &.{
+                test_path,
+            },
+            .language = if (std.mem.endsWith(u8, test_path, ".cc"))
+                .cpp
+            else
+                .c,
+        });
+
+        const test_name = try std.mem.replaceOwned(u8, b.allocator, std.fs.path.stem(test_path), ".", "_");
+        defer b.allocator.free(test_name);
+
+        const test_exe = b.addExecutable(.{
+            .name = test_name,
+            .root_module = test_mod,
+        });
+
+        const run_test = b.addRunArtifact(test_exe);
+        options.test_step.dependOn(&run_test.step);
+    }
 }
 
 const asbeil_sources: []const []const u8 = &.{
@@ -173,4 +225,8 @@ const asbeil_sources: []const []const u8 = &.{
     "profiling/internal/exponential_biased.cc",
 
     "numeric/int128.cc",
+};
+
+const asbeil_tests: []const []const u8 = &.{
+    "base/c_header_test.c",
 };
