@@ -8,8 +8,8 @@
             .hash = "N-V-__8AAKESzQLTflk_8mGwLlk9VhY62vntiaDf9ZwZwX6U",
         },
         .abseil = .{
-            .url = "git+https://github.com/Jan200101/ziggy-abseil#722e1089262cdce8e485363a6729c06b6ca2efa9",
-            .hash = "abseil-0.0.0-M-myhlIkAACpKaKXQ-J4u1tJAiCK7eIijCWjawVp3BQZ",
+            .url = "git+https://github.com/allyourcodebase/abseil.git#b21583e53579976763b57236143b0f7df679b0eb",
+            .hash = "abseil-0.0.0-M-myhlYkAAAKK5s7GfBUsP51ti8zZB8th0nOjmdMy2m_",
         },
     },
     .paths = .{""},

@@ -4,7 +4,7 @@
 
 ## How to add to your project
 
-`zig fetch --save git+https://github.com/Jan200101/ziggy-protobuf`
+`zig fetch --save git+https://github.com/allyourcodebase/protobuf`
 
 You can then access the available libraries and executables like this:
 ```zig
