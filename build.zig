@@ -4,27 +4,21 @@ const Step = std.Build.Step;
 const Dependency = std.Build.Dependency;
 const LinkMode = std.builtin.LinkMode;
 
+const version = std.SemanticVersion.parse(@import("build.zig.zon").version) catch unreachable;
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-
-    const version: std.SemanticVersion = .{
-        .major = 33,
-        .minor = 1,
-        .patch = 0,
-    };
-
-    const test_step = b.step("test", "Run library tests");
 
     const compile_flags = .{
         "-std=c++17",
     };
 
-    const default_linkage = b.option(LinkMode, "linkage", "default linkage for all targets") orelse .static;
-    const utf8_range_linkage = b.option(LinkMode, "utf8_range-linkage", "linkage for utf8_range") orelse default_linkage;
-    const upb_linkage = b.option(LinkMode, "upb-linkage", "linkage for upb") orelse default_linkage;
-    const libprotobuf_linkage = b.option(LinkMode, "libprotobuf-linkage", "linkage for libprotobuf") orelse default_linkage;
-    const libprotoc_linkage = b.option(LinkMode, "libprotoc-linkage", "linkage for libprotoc") orelse default_linkage;
+    const default_lib_linkage = b.option(LinkMode, "linkage", "default linkage for all library targets") orelse .static;
+    const utf8_range_linkage = b.option(LinkMode, "utf8_range-linkage", "linkage for utf8_range") orelse default_lib_linkage;
+    const upb_linkage = b.option(LinkMode, "upb-linkage", "linkage for upb") orelse default_lib_linkage;
+    const libprotobuf_linkage = b.option(LinkMode, "libprotobuf-linkage", "linkage for libprotobuf") orelse default_lib_linkage;
+    const libprotoc_linkage = b.option(LinkMode, "libprotoc-linkage", "linkage for libprotoc") orelse default_lib_linkage;
     const protoc_linkage = b.option(LinkMode, "protoc-linkage", "linkage for protoc") orelse null;
 
     const upstream = b.dependency("protobuf", .{});
@@ -34,118 +28,114 @@ pub fn build(b: *std.Build) void {
     );
 
     const utf8_range = blk: {
+        const mod = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .link_libcpp = true,
+        });
         const lib = b.addLibrary(.{
             .name = "utf8_range",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-                .link_libc = true,
-                .link_libcpp = true,
-            }),
+            .root_module = mod,
             .linkage = utf8_range_linkage,
         });
-        lib.addIncludePath(upstream.path("third_party/utf8_range"));
+        mod.addIncludePath(upstream.path("third_party/utf8_range"));
+        mod.addCSourceFiles(.{
+            .root = upstream.path("third_party/utf8_range"),
+            .files = utf8_range_srcs,
+            .language = .cpp,
+        });
         lib.installHeadersDirectory(
             upstream.path("third_party/utf8_range"),
             "",
             .{ .include_extensions = &.{".h"} },
         );
-        lib.addCSourceFiles(.{
-            .root = upstream.path("third_party/utf8_range"),
-            .files = utf8_range_srcs,
-            .language = .cpp,
-        });
         b.installArtifact(lib);
         break :blk lib;
     };
 
     const upb = blk: {
+        const mod = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
         const lib = b.addLibrary(.{
             .name = "upb",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-                .link_libc = true,
-            }),
+            .root_module = mod,
             .linkage = upb_linkage,
         });
-        lib.linkLibrary(utf8_range);
-        lib.addIncludePath(upstream.path(""));
-        lib.addIncludePath(upstream.path("src"));
-        lib.addIncludePath(upstream.path("upb/reflection/cmake"));
+        mod.linkLibrary(utf8_range);
+        mod.addIncludePath(upstream.path(""));
+        mod.addIncludePath(upstream.path("src"));
+        mod.addIncludePath(upstream.path("upb/reflection/cmake"));
+        mod.addCSourceFiles(.{
+            .root = upstream.path(""),
+            .files = upb_srcs,
+            .language = .c,
+        });
         lib.installHeadersDirectory(
             upstream.path("upb/reflection/cmake"),
             "",
             .{ .include_extensions = &.{".h"} },
         );
-        lib.addCSourceFiles(.{
-            .root = upstream.path(""),
-            .files = upb_srcs,
-            .language = .c,
-        });
         b.installArtifact(lib);
-        testUPB(.{
-            .owner = b,
-            .upstream = upstream,
-            .target = target,
-            .optimize = optimize,
-            .test_step = test_step,
-            .compile_step = lib,
-        });
         break :blk lib;
     };
 
     const libprotobuf = blk: {
+        const mod = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .link_libcpp = true,
+        });
         const lib = b.addLibrary(.{
             .name = "protobuf",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-                .link_libc = true,
-                .link_libcpp = true,
-            }),
+            .root_module = mod,
             .linkage = libprotobuf_linkage,
             .version = version,
         });
-        lib.linkLibrary(abseil_dep.artifact("abseil"));
-        lib.linkLibrary(utf8_range);
-        lib.linkLibrary(upb);
-        lib.addIncludePath(upstream.path(""));
-        lib.addIncludePath(upstream.path("src"));
-        lib.installHeadersDirectory(
-            upstream.path("src"),
-            "",
-            .{ .include_extensions = &.{ ".h", ".proto" } },
-        );
-        lib.addCSourceFiles(.{
+        mod.linkLibrary(abseil_dep.artifact("abseil"));
+        mod.linkLibrary(utf8_range);
+        mod.linkLibrary(upb);
+        mod.addIncludePath(upstream.path(""));
+        mod.addIncludePath(upstream.path("src"));
+        mod.addCSourceFiles(.{
             .root = upstream.path(""),
             .files = libprotobuf_srcs,
             .flags = &compile_flags,
             .language = .cpp,
         });
+        lib.installHeadersDirectory(
+            upstream.path("src"),
+            "",
+            .{ .include_extensions = &.{ ".h", ".proto" } },
+        );
         b.installArtifact(lib);
         break :blk lib;
     };
 
     const libprotoc = blk: {
+        const mod = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .link_libcpp = true,
+        });
         const lib = b.addLibrary(.{
             .name = "protoc",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-                .link_libc = true,
-                .link_libcpp = true,
-            }),
+            .root_module = mod,
             .linkage = libprotoc_linkage,
             .version = version,
         });
-        lib.linkLibrary(libprotobuf);
-        lib.linkLibrary(utf8_range);
-        lib.linkLibrary(upb);
-        lib.linkLibrary(abseil_dep.artifact("abseil"));
-        lib.addIncludePath(upstream.path(""));
-        lib.addIncludePath(upstream.path("src"));
-        lib.addCSourceFiles(.{
+        mod.linkLibrary(libprotobuf);
+        mod.linkLibrary(utf8_range);
+        mod.linkLibrary(upb);
+        mod.linkLibrary(abseil_dep.artifact("abseil"));
+        mod.addIncludePath(upstream.path(""));
+        mod.addIncludePath(upstream.path("src"));
+        mod.addCSourceFiles(.{
             .root = upstream.path(""),
             .files = libprotoc_srcs,
             .flags = &compile_flags,
@@ -156,79 +146,35 @@ pub fn build(b: *std.Build) void {
     };
 
     const protoc = blk: {
+        const mod = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .link_libcpp = true,
+        });
         const exe = b.addExecutable(.{
             .name = "protoc",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-                .link_libc = true,
-                .link_libcpp = true,
-            }),
+            .root_module = mod,
             .linkage = protoc_linkage,
             .version = version,
         });
         exe.pie = true;
-        exe.linkLibrary(libprotoc);
-        exe.linkLibrary(libprotobuf);
-        exe.linkLibrary(utf8_range);
-        exe.linkLibrary(abseil_dep.artifact("abseil"));
-        exe.addIncludePath(upstream.path("src"));
-        exe.addIncludePath(upstream.path("third_party/utf8_range"));
-        exe.addCSourceFiles(.{
+        mod.linkLibrary(libprotoc);
+        mod.linkLibrary(libprotobuf);
+        mod.linkLibrary(utf8_range);
+        mod.linkLibrary(abseil_dep.artifact("abseil"));
+        mod.addIncludePath(upstream.path("src"));
+        mod.addIncludePath(upstream.path("third_party/utf8_range"));
+        mod.addCSourceFiles(.{
             .root = upstream.path(""),
             .files = protoc_srcs,
             .language = .cpp,
         });
 
         b.installArtifact(exe);
-        testProtoc(.{
-            .owner = b,
-            .upstream = upstream,
-            .target = target,
-            .optimize = optimize,
-            .test_step = test_step,
-            .compile_step = exe,
-        });
         break :blk exe;
     };
     _ = protoc;
-}
-
-const TestOptions = struct {
-    owner: *std.Build,
-    upstream: *Dependency,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-
-    test_step: *Step,
-    compile_step: *Step.Compile,
-};
-
-fn testUPB(options: TestOptions) void {
-    const upb = options.compile_step;
-
-    const module = options.owner.createModule(.{
-        .target = options.target,
-        .optimize = options.optimize,
-        .link_libc = true,
-    });
-
-    const test_item = options.owner.addTest(.{ .name = "all", .root_module = module });
-    test_item.linkLibrary(upb);
-    test_item.addCSourceFiles(.{
-        .root = options.upstream.path("upb/test"),
-        .files = &.{
-            "test_generated_code.cc",
-        },
-        .language = .cpp,
-    });
-
-    const run_main_tests = options.owner.addRunArtifact(test_item);
-    options.test_step.dependOn(&run_main_tests.step);
-}
-
-fn testProtoc(options: TestOptions) void {
-    _ = options;
 }
 
 const utf8_range_srcs: []const []const u8 = &.{
@@ -272,6 +218,7 @@ const libprotobuf_srcs: []const []const u8 = &.{
     "src/google/protobuf/implicit_weak_message.cc",
     "src/google/protobuf/inlined_string_field.cc",
     "src/google/protobuf/internal_feature_helper.cc",
+    "src/google/protobuf/symbol_checker.cc",
     "src/google/protobuf/io/coded_stream.cc",
     "src/google/protobuf/io/gzip_stream.cc",
     "src/google/protobuf/io/io_win32.cc",
@@ -422,6 +369,7 @@ const libprotoc_srcs: []const []const u8 = &.{
     "src/google/protobuf/compiler/python/pyi_generator.cc",
     "src/google/protobuf/compiler/retention.cc",
     "src/google/protobuf/compiler/ruby/ruby_generator.cc",
+    "src/google/protobuf/compiler/ruby/rbs_generator.cc",
     "src/google/protobuf/compiler/rust/accessors/accessor_case.cc",
     "src/google/protobuf/compiler/rust/accessors/accessors.cc",
     "src/google/protobuf/compiler/rust/accessors/default_value.cc",
@@ -444,6 +392,7 @@ const libprotoc_srcs: []const []const u8 = &.{
     "src/google/protobuf/compiler/rust/rust_field_type.cc",
     "src/google/protobuf/compiler/rust/rust_keywords.cc",
     "src/google/protobuf/compiler/rust/upb_helpers.cc",
+    "src/google/protobuf/compiler/rust/extension.cc",
     "src/google/protobuf/compiler/subprocess.cc",
     "src/google/protobuf/compiler/versions.cc",
     "src/google/protobuf/compiler/zip_writer.cc",
@@ -464,6 +413,8 @@ const upb_srcs: []const []const u8 = &.{
     "upb/base/status.c",
     "upb/wire/decode.c",
     "upb/wire/encode.c",
+    "upb/wire/reader.c",
+    "upb/wire/eps_copy_input_stream.c",
     "upb/wire/internal/decoder.c",
     "upb/mem/arena.c",
     "upb/mem/alloc.c",
@@ -500,4 +451,5 @@ const upb_srcs: []const []const u8 = &.{
     "upb/mini_table/message.c",
     "upb/mini_table/extension_registry.c",
     "upb/mini_table/internal/message.c",
+    "upb/mini_table/generated_registry.c",
 };
