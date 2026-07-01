@@ -13,14 +13,14 @@ const protobuf_dep = b.dependency("protobuf", .{
     .optimize = optimize,
 });
 
-// µpb
-const upb = protobuf_dep.artifact("upb");
+// libµpb
+const libupb = protobuf_dep.artifact("libupb");
 
 // libprotobuf
-const libprotoc = protobuf_dep.artifact("protobuf");
+const libprotobuf = protobuf_dep.artifact("libprotobuf");
 
 // libprotoc
-const libprotoc = protobuf_dep.artifact("protoc");
+const libprotoc = protobuf_dep.artifact("libprotoc");
 
 // protoc
 const protoc = protobuf_dep.artifact("protoc");

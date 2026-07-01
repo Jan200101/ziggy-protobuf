@@ -61,7 +61,7 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
         });
         const lib = b.addLibrary(.{
-            .name = "upb",
+            .name = "libupb",
             .root_module = mod,
             .linkage = upb_linkage,
         });
@@ -91,7 +91,7 @@ pub fn build(b: *std.Build) void {
             .link_libcpp = true,
         });
         const lib = b.addLibrary(.{
-            .name = "protobuf",
+            .name = "libprotobuf",
             .root_module = mod,
             .linkage = libprotobuf_linkage,
             .version = version,
@@ -124,7 +124,7 @@ pub fn build(b: *std.Build) void {
             .link_libcpp = true,
         });
         const lib = b.addLibrary(.{
-            .name = "protoc",
+            .name = "libprotoc",
             .root_module = mod,
             .linkage = libprotoc_linkage,
             .version = version,
