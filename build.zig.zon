@@ -7,7 +7,10 @@
             .url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protobuf-35.1.tar.gz",
             .hash = "N-V-__8AAKESzQLTflk_8mGwLlk9VhY62vntiaDf9ZwZwX6U",
         },
-        .abseil = .{ .path = "pkg/abseil" },
+        .abseil = .{
+            .url = "git+https://github.com/Jan200101/ziggy-abseil#722e1089262cdce8e485363a6729c06b6ca2efa9",
+            .hash = "abseil-0.0.0-M-myhlIkAACpKaKXQ-J4u1tJAiCK7eIijCWjawVp3BQZ",
+        },
     },
     .paths = .{""},
 }
